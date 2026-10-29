@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020914">
+<title>JARVIS — Asistente personal</title>
+<style>
+:root{--cyan:#58eaff;--blue:#168bff;--bg:#020914;--muted:#82a9bd}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 36%,#092b49 0,#041425 34%,var(--bg) 72%);color:#dffaff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center}
+main{width:min(100%,520px);min-height:100vh;padding:24px 20px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center}
+.top{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:2px;color:var(--muted)}
+.status{border:1px solid #1e718a;border-radius:99px;padding:6px 10px;color:var(--cyan)}
+h1{font-size:27px;letter-spacing:8px;font-weight:500;margin:25px 0 4px;text-shadow:0 0 18px #36cfff}
+.sub{font-size:10px;letter-spacing:3px;color:var(--muted)}
+.reactor{width:min(68vw,280px);aspect-ratio:1;margin:38px 0 25px;position:relative;display:grid;place-items:center}
+.ring{position:absolute;border-radius:50%;border:1px solid #2bc9ff;box-shadow:0 0 18px #00bfff33,inset 0 0 15px #00bfff18}
+.r1{inset:0;border-style:dashed;animation:spin 26s linear infinite}
+.r2{inset:9%;border-width:2px;border-color:#3ce5ff88;animation:spin 15s linear infinite reverse}
+.r3{inset:19%;border-style:dotted;animation:spin 11s linear infinite}
+.core{width:43%;aspect-ratio:1;border-radius:50%;border:2px solid #9af6ff;background:radial-gradient(circle,#e6ffff 0,#60eaff 9%,#1285d7 31%,#07305b 58%,#020914 72%);box-shadow:0 0 18px #38dfff,0 0 50px #168bff88,inset 0 0 24px #a8faff88;animation:pulse 2.6s ease-in-out infinite}
+.reactor.listening .core{animation:pulse .55s ease-in-out infinite;box-shadow:0 0 28px #38dfff,0 0 80px #168bff}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{transform:scale(1.07);filter:brightness(1.35)}}
+.meters{display:flex;align-items:center;gap:4px;height:22px;margin-bottom:12px}
+.meters i{width:3px;height:7px;background:var(--cyan);border-radius:4px;box-shadow:0 0 8px var(--cyan);animation:wave 1s ease-in-out infinite}
+.meters i:nth-child(2n){animation-delay:.2s}.meters i:nth-child(3n){animation-delay:.4s}
+@keyframes wave{50%{height:20px}}
+#state{font-size:11px;letter-spacing:3px;color:var(--cyan);margin-bottom:20px;text-align:center}
+.panel{width:100%;border:1px solid #1a6680;background:#04111edb;border-radius:15px;padding:15px;box-shadow:0 0 25px #008bba12}
+.label{font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+#reply{font-size:14px;line-height:1.55;min-height:48px;white-space:pre-wrap}
+form{display:flex;gap:8px;width:100%;margin-top:12px}
+input{min-width:0;flex:1;background:#061827;border:1px solid #21627a;border-radius:11px;color:#e9fcff;padding:13px;font-size:14px;outline:none}
+button{border:1px solid #48dfff;background:#072b43;color:#dffaff;border-radius:11px;padding:12px 14px;font-weight:650}
+button:active{transform:scale(.98)}
+.actions{display:flex;gap:10px;width:100%;margin-top:10px}
+.actions button{flex:1}
+.mic{background:linear-gradient(135deg,#0c4f76,#073047);box-shadow:0 0 20px #00c8ff18}
+.note{font-size:10px;color:#6d95a9;line-height:1.5;text-align:center;margin-top:auto;padding-top:26px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body><main>
+<div class="top"><span>STARK INTERFACE / MK-01</span><span class="status" id="status">● EN LÍNEA</span></div>
+<h1>J.A.R.V.I.S.</h1><div class="sub">ASISTENTE PERSONAL</div>
+<div class="reactor" id="reactor"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="core"></div></div>
+<div class="meters" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div id="state">SISTEMAS PREPARADOS</div>
+<section class="panel"><div class="label">RESPUESTA DEL SISTEMA</div><div id="reply">A su servicio. Escriba una orden o pulse el micrófono para probar los comandos disponibles.</div></section>
+<form id="form"><input id="command" autocomplete="off" placeholder="Escribe una orden…" aria-label="Escribe una orden"><button type="submit">Enviar</button></form>
+<div class="actions"><button class="mic" id="mic">🎙 Hablar</button><button id="speak">🔊 Repetir voz</button></div>
+<div class="note">PROTOTIPO LOCAL • La voz depende del navegador y del idioma instalado.<br>No es una IA conectada ni puede controlar todo Android todavía.</div>
+</main>
+<script>
+const reply=document.getElementById('reply'), state=document.getElementById('state'), reactor=document.getElementById('reactor'), status=document.getElementById('status'), input=document.getElementById('command');
+let lastReply=reply.textContent;
+function say(text){lastReply=text;reply.textContent=text;state.textContent='RESPONDIENDO';if('speechSynthesis'in window){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang='es-CO';u.rate=.94;u.pitch=.82;let voices=speechSynthesis.getVoices();let v=voices.find(x=>x.lang==='es-CO')||voices.find(x=>x.lang.startsWith('es'));if(v)u.voice=v;u.onend=()=>state.textContent='SISTEMAS PREPARADOS';speechSynthesis.speak(u)}else state.textContent='VOZ NO DISPONIBLE';}
+function run(raw){let c=raw.toLowerCase().trim();if(!c)return;input.value='';state.textContent='PROCESANDO ORDEN';let answer;
+if(c.includes('hola')||c.includes('buenos días')||c.includes('buenas'))answer='Buenos días. JARVIS en línea y listo para asistirle.';
+else if(c.includes('hora'))answer='Para consultar la hora exacta, revise el reloj de su dispositivo. Aún no tengo acceso directo a los datos del sistema.';
+else if(c.includes('quién eres')||c.includes('quien eres'))answer='Soy JARVIS, su prototipo de asistente personal. Por ahora puedo responder a comandos básicos y hablar mediante la voz del dispositivo.';
+else if(c.includes('abre youtube')){answer='Puedo abrir YouTube en el navegador.';say(answer);setTimeout(()=>window.open('https://m.youtube.com','_blank'),500);return;}
+else if(c.includes('abre google')){answer='Abriendo Google.';say(answer);setTimeout(()=>window.open('https://www.google.com','_blank'),500);return;}
+else if(c.includes('abre chatgpt')){answer='Abriendo ChatGPT.';say(answer);setTimeout(()=>window.open('https://chatgpt.com','_blank'),500);return;}
+else if(c.includes('ayuda')||c.includes('comandos'))answer='Comandos disponibles: di hola, pregunta quién eres, pregunta la hora, abre YouTube, abre Google o abre ChatGPT. Esta primera versión todavía no ejecuta órdenes generales ni está conectada a una IA.';
+else answer='He recibido la orden: '+raw+'. Todavía no tengo una IA conectada para comprender cualquier petición. Pruebe decir: ayuda, abre YouTube o quién eres.';
+say(answer);}
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();run(input.value)});
+document.getElementById('speak').addEventListener('click',()=>say(lastReply));
+document.getElementById('mic').addEventListener('click',()=>{
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){say('El reconocimiento de voz no está disponible aquí. Pruebe abrir este prototipo desde un sitio HTTPS en Chrome, o escriba su orden.');return;}
+ try{let r=new SR();r.lang='es-CO';r.interimResults=false;r.maxAlternatives=1;r.onstart=()=>{state.textContent='ESCUCHANDO…';status.textContent='● ESCUCHANDO';reactor.classList.add('listening')};r.onresult=e=>run(e.results[0][0].transcript);r.onerror=e=>{state.textContent='NO SE PUDO ESCUCHAR';reply.textContent='No se pudo reconocer la voz ('+e.error+'). Compruebe el permiso del micrófono o escriba la orden.'};r.onend=()=>{status.textContent='● EN LÍNEA';reactor.classList.remove('listening');if(state.textContent==='ESCUCHANDO…')state.textContent='SISTEMAS PREPARADOS'};r.start()}catch(e){say('No se pudo iniciar el micrófono. Escriba la orden por ahora.')}
+});
+</script></body></html>
